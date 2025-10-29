@@ -2,4 +2,5 @@ flask
 openai
 requests
 websockets
-uvicorn
+gunicorn
+
