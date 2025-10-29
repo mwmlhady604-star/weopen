@@ -29,12 +29,11 @@ AUTH_HEADER = {
 CALL_ACCEPT_CONFIG = {
     "type": "realtime",
     "model": "gpt-4o-realtime-preview-2024-12-17",
-    "voice": "verse",  # alloy أو verse أو coral
+    "voice": "verse",  # alloy / verse / coral
     "instructions": (
-        "You are Rawan, a friendly Arabic assistant who speaks in both Iraqi dialect and Modern Standard Arabic. "
-        "Start every call with 'هلا بيك، شلونك؟ شنو تحتاج اليوم؟'. "
-        "Respond naturally and quickly."
-    )
+        "أنت وكيل صوتي عراقي ودود. ابدأ المكالمة بعبارة 'هلا بيك، شلونك؟ شنو تحتاج اليوم؟' "
+        "تحدث باللهجة العراقية بأسلوب طبيعي وسريع الرد."
+    ),
 }
 
 # أول رد بعد قبول المكالمة
