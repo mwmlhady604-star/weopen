@@ -28,10 +28,12 @@ AUTH_HEADER = {
 # إعدادات القبول
 CALL_ACCEPT_CONFIG = {
     "type": "realtime",
-    "model": "gpt-realtime",
+    "model": "gpt-4o-realtime-preview-2024-12-17",
+    "voice": "verse",  # alloy أو verse أو coral
     "instructions": (
-        "أنت وكيل صوتي ذكي تتحدث باللهجة العراقية والفصحى. "
-        "كن ودوداً، سريع الرد، وقل دائماً 'هلا بيك شلونك؟' عند بداية المكالمة."
+        "You are Rawan, a friendly Arabic assistant who speaks in both Iraqi dialect and Modern Standard Arabic. "
+        "Start every call with 'هلا بيك، شلونك؟ شنو تحتاج اليوم؟'. "
+        "Respond naturally and quickly."
     )
 }
 
@@ -83,13 +85,18 @@ def webhook_handler():
                 headers={**AUTH_HEADER, "Content-Type": "application/json"},
                 json=CALL_ACCEPT_CONFIG,
             )
-            print(f"☎️ تم قبول المكالمة: {resp.status_code}")
+            print(f"☎️ تم قبول المكالمة: {resp.status_code} - {resp.text}")
 
-            # تشغيل WebSocket في thread منفصل
-            threading.Thread(
-                target=lambda: asyncio.run(handle_realtime_session(call_id)),
-                daemon=True,
-            ).start()
+            # التحقق من نجاح القبول
+            if resp.status_code == 200:
+                print("✅ OpenAI accepted the call.")
+                # تشغيل WebSocket في thread منفصل
+                threading.Thread(
+                    target=lambda: asyncio.run(handle_realtime_session(call_id)),
+                    daemon=True,
+                ).start()
+            else:
+                print(f"❌ OpenAI rejected the call: {resp.text}")
 
             return Response(status=200)
 
