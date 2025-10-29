@@ -10,7 +10,7 @@ AUTH_HEADER = {"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"}
 call_accept = {
     "type": "realtime",
     "model": "gpt-4o-realtime-preview-2024-12-17",
-    "voice": "verse",
+    "voice": "cedar",
     "instructions": (
         "أنت وكيل صوتي عراقي ودود. "
         "ابدأ المكالمة بعبارة: 'هلا بيك، شلونك؟ شنو تحتاج اليوم؟'"
