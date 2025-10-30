@@ -7,7 +7,8 @@ client = OpenAI(webhook_secret=os.environ["OPENAI_WEBHOOK_SECRET"])
 
 AUTH_HEADER = {"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"}
 
-call_accept = {
+# ✅ الصيغة الرسمية المحدثة (بدون أي session)
+CALL_ACCEPT_BODY = {
     "type": "realtime",
     "model": "gpt-4o-realtime-preview-2024-12-17",
     "voice": "cedar",
@@ -17,7 +18,7 @@ call_accept = {
     ),
 }
 
-response_create = {
+INITIAL_RESPONSE = {
     "type": "response.create",
     "response": {
         "instructions": "هلا بيك! شلونك؟ شنو تحتاج اليوم؟"
@@ -31,7 +32,7 @@ async def websocket_task(call_id):
             additional_headers=AUTH_HEADER,
         ) as ws:
             print(f"✅ WebSocket opened for {call_id}")
-            await ws.send(json.dumps(response_create))
+            await ws.send(json.dumps(INITIAL_RESPONSE))
             while True:
                 msg = await ws.recv()
                 print(f"🎧 {msg}")
@@ -42,15 +43,19 @@ async def websocket_task(call_id):
 def webhook():
     try:
         event = client.webhooks.unwrap(request.data, request.headers)
+
         if event.type == "realtime.call.incoming":
             call_id = event.data.call_id
             print(f"📞 Incoming call: {call_id}")
+            print(f"🧩 curl example: curl https://api.openai.com/v1/realtime/calls/{call_id}/accept -H 'Authorization: Bearer {os.getenv('OPENAI_API_KEY')}' -H 'Content-Type: application/json' -d '{json.dumps(CALL_ACCEPT_BODY)}'")
 
+            # ✅ استخدم data=json.dumps() وليس json=
             resp = requests.post(
                 f"https://api.openai.com/v1/realtime/calls/{call_id}/accept",
                 headers={**AUTH_HEADER, "Content-Type": "application/json"},
-                json=call_accept,
+                data=json.dumps(CALL_ACCEPT_BODY),
             )
+
             print(f"☎️ Accept response: {resp.status_code} - {resp.text}")
 
             if resp.status_code == 200:
@@ -62,6 +67,7 @@ def webhook():
                 print("❌ Failed to accept call.")
 
             return Response(status=200)
+
         return Response(status=200)
 
     except InvalidWebhookSignatureError:
