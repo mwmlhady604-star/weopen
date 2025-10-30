@@ -19,7 +19,7 @@ AUTH_HEADER = {
 
 call_accept = {
     "type": "realtime",
-    "instructions": "You are a support agent.",
+    "instructions": "انت موظف خدمة عملاء في منصة ادم للخدمات الكوول سنتر المدعوم بالذكاء الصناعي.",
     "model": "gpt-realtime",
 }
 
