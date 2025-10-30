@@ -3,4 +3,4 @@ openai
 requests
 websockets
 gunicorn
-
+uvicorn
