@@ -1,14 +1,13 @@
-from flask import Flask, request, Response, jsonify, make_response
+from fastapi import FastAPI, Request, Response, BackgroundTasks, HTTPException
 from openai import OpenAI, InvalidWebhookSignatureError
 import asyncio
 import json
 import os
 import requests
 import time
-import threading
 import websockets
 
-app = Flask(__name__)
+app = FastAPI()
 client = OpenAI(
     webhook_secret=os.environ["OPENAI_WEBHOOK_SECRET"]
 )
@@ -53,10 +52,13 @@ async def websocket_task(call_id):
         print(f"WebSocket error: {e}")
 
 
-@app.route("/", methods=["POST"])
-def webhook():
+@app.post("/")
+async def webhook(request: Request, background_tasks: BackgroundTasks):
     try:
-        event = client.webhooks.unwrap(request.data, request.headers)
+        body = await request.body()
+        headers = dict(request.headers)
+        
+        event = client.webhooks.unwrap(body, headers)
 
         if event.type == "realtime.call.incoming":
             requests.post(
@@ -66,17 +68,15 @@ def webhook():
                 headers={**AUTH_HEADER, "Content-Type": "application/json"},
                 json=call_accept,
             )
-            threading.Thread(
-                target=lambda: asyncio.run(
-                    websocket_task(event.data.call_id)
-                ),
-                daemon=True,
-            ).start()
-            return Response(status=200)
+            background_tasks.add_task(
+                lambda: asyncio.run(websocket_task(event.data.call_id))
+            )
+            return Response(content="", status_code=200)
     except InvalidWebhookSignatureError as e:
         print("Invalid signature", e)
-        return Response("Invalid signature", status=400)
+        raise HTTPException(status_code=400, detail="Invalid signature")
 
 
 if __name__ == "__main__":
-    app.run(port=8000)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
