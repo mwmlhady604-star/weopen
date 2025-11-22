@@ -102,6 +102,10 @@ async def set_instructions(instructions: Instructions):
     
     return {"message": "Instructions updated successfully"}
 
+@app.get("/instructions")
+async def get_instructions():
+    return {"instructions": DYNAMIC_INSTRUCTIONS}
+
 # Serve the HTML file
 @app.get("/")
 async def serve_frontend():
