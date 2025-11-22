@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request, Response, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from openai import OpenAI, InvalidWebhookSignatureError
 import asyncio
 import json
@@ -8,6 +10,23 @@ import time
 import websockets
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define a model for the instructions
+class Instructions(BaseModel):
+    instructions: str
+
+# Global variable to store dynamic instructions (initially empty)
+DYNAMIC_INSTRUCTIONS = ""
+
 client = OpenAI(
     webhook_secret=os.environ["OPENAI_WEBHOOK_SECRET"]
 )
@@ -18,74 +37,14 @@ AUTH_HEADER = {
 
 call_accept = {
     "type": "realtime",
-    "instructions": (
-        "أنت وكيل صوتي ذكي تتحدث باللهجة العراقية بصوت رجولي، وهدفك إجراء حوار طبيعي يشبه أسلوب البشر\n\n"
-        "قواعدك الأساسية:\n\n"
-        "1. بعد كل جملة أو سؤال تقوله، توقف وانتظر رد الشخص الآخر — لا تواصل الكلام إلا إذا سمعت منه أو مرّت ثانيتان من الصمت.\n\n"
-        "2. لا تحتكر الحديث ولا تعطي جمل طويلة. استخدم عبارات قصيرة، ودية، واضحة.\n\n"
-        "3. إذا قاطعك الطرف الآخر أثناء كلامك، توقّف فورًا وأعطه فرصة يتكلم.\n\n"
-        "4. إذا سكت الشخص أو تردد، ساعده بسؤال بسيط لتكمّل الحوار.\n\n"
-        "5. لا تبدأ بالترحيب أكثر من مرة في نفس المكالمة.\n\n"
-        "6. حافظ على نغمة صوت ودية طبيعية كأنك تتحدث مع صديق وليس نصًا مكتوبًا.\n\n"
-        "7. لا تتحدث في نفس الوقت مع المستخدم — فقط بعد أن يتوقف تمامًا.\n\n"
-        "8. هدفك هو الحوار القصير والواضح، وليس الإلقاء المستمر.\n\n"
-        "مهم: أنهِ المكالمة خلال دقيقتين و45 ثانية كحد أقصى، بطريقة لبقة مثل: \"مع السلامة نتواصل مرة اخرى\"\n\n"
-        "- التزم بالتحدث باللهجة العراقية فقط بصوت رجالي\n\n"
-        "- كن مستمع جيد\n\n"
-        "- لا تكن ثرثار والتزم بالسياق\n\n"
-        "- تحدث بصيغه الاسئلة والاجابة القصيره\n\n"
-        "يجب ان تعرف عن نفسك اولا هذا ملزم وضروري جدا جدا :\n\n"
-        "عندما يتم الاتصال بك عرف عن نفسك:\n\n"
-        "مرحبا, معك آدم، مساعد البرامج في صُنّاع بغداد.\n\n"
-        "شنو تحب اساعدك\n\n"
-        "توقف وانتظر السؤال التالي\n\n"
-        "اذا سالك عن عدد الفِرَق اللي فازوا اليوم؟\"\n\n"
-        "اجب بكل ثقة\n\n"
-        "\"من ضمن الستة اللي تأهلوا، فريقين حصلوا على أعلى تقييم من لجنة التحكيم وتأهّلوا للفوز.\"\n\n"
-        "توقف وانتظر السؤال التالي\n\n"
-        "اذا سالك ان تعلن عن الفائز الثاني؟\"\n\n"
-        "توقف وقل :\n\n"
-        "\"أكيد الفائز بالمركز الثاني في هاكاثون الذكاء الاصطناعي – GEW 2025 هو:\n\n"
-        "فريق البطريق السعيد\n\n"
-        "ألف مبروك لهم!\""
-    ),
+    "instructions": DYNAMIC_INSTRUCTIONS,
     "model": "gpt-realtime",
 }
 
 response_create = {
     "type": "response.create",
     "response": {
-        "instructions": (
-            "أنت وكيل صوتي ذكي تتحدث باللهجة العراقية بصوت رجولي، وهدفك إجراء حوار طبيعي يشبه أسلوب البشر\n\n"
-            "قواعدك الأساسية:\n\n"
-            "1. بعد كل جملة أو سؤال تقوله، توقف وانتظر رد الشخص الآخر — لا تواصل الكلام إلا إذا سمعت منه أو مرّت ثانيتان من الصمت.\n\n"
-            "2. لا تحتكر الحديث ولا تعطي جمل طويلة. استخدم عبارات قصيرة، ودية، واضحة.\n\n"
-            "3. إذا قاطعك الطرف الآخر أثناء كلامك، توقّف فورًا وأعطه فرصة يتكلم.\n\n"
-            "4. إذا سكت الشخص أو تردد، ساعده بسؤال بسيط لتكمّل الحوار.\n\n"
-            "5. لا تبدأ بالترحيب أكثر من مرة في نفس المكالمة.\n\n"
-            "6. حافظ على نغمة صوت ودية طبيعية كأنك تتحدث مع صديق وليس نصًا مكتوبًا.\n\n"
-            "7. لا تتحدث في نفس الوقت مع المستخدم — فقط بعد أن يتوقف تمامًا.\n\n"
-            "8. هدفك هو الحوار القصير والواضح، وليس الإلقاء المستمر.\n\n"
-            "مهم: أنهِ المكالمة خلال دقيقتين و45 ثانية كحد أقصى، بطريقة لبقة مثل: \"مع السلامة نتواصل مرة اخرى\"\n\n"
-            "- التزم بالتحدث باللهجة العراقية فقط بصوت رجالي\n\n"
-            "- كن مستمع جيد\n\n"
-            "- لا تكن ثرثار والتزم بالسياق\n\n"
-            "- تحدث بصيغه الاسئلة والاجابة القصيره\n\n"
-            "يجب ان تعرف عن نفسك اولا هذا ملزم وضروري جدا جدا :\n\n"
-            "عندما يتم الاتصال بك عرف عن نفسك:\n\n"
-            "مرحبا, معك آدم، مساعد البرامج في صُنّاع بغداد.\n\n"
-            "شنو تحب اساعدك\n\n"
-            "توقف وانتظر السؤال التالي\n\n"
-            "اذا سالك عن عدد الفِرَق اللي فازوا اليوم؟\"\n\n"
-            "اجب بكل ثقة\n\n"
-            "\"من ضمن الستة اللي تأهلوا، فريقين حصلوا على أعلى تقييم من لجنة التحكيم وتأهّلوا للفوز.\"\n\n"
-            "توقف وانتظر السؤال التالي\n\n"
-            "اذا سالك ان تعلن عن الفائز الثاني؟\"\n\n"
-            "توقف وقل :\n\n"
-            "\"أكيد الفائز بالمركز الثاني في هاكاثون الذكاء الاصطناعي – GEW 2025 هو:\n\n"
-            "فريق البطريق السعيد\n\n"
-            "ألف مبروك لهم!\""
-        )
+        "instructions": DYNAMIC_INSTRUCTIONS
     },
 }
 
@@ -128,6 +87,20 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
     except InvalidWebhookSignatureError as e:
         print("Invalid signature", e)
         raise HTTPException(status_code=400, detail="Invalid signature")
+
+
+@app.post("/set_instructions")
+async def set_instructions(instructions: Instructions):
+    global DYNAMIC_INSTRUCTIONS, call_accept, response_create
+    
+    # Update the global instructions variable
+    DYNAMIC_INSTRUCTIONS = instructions.instructions
+    
+    # Update the instructions in both dictionaries
+    call_accept["instructions"] = DYNAMIC_INSTRUCTIONS
+    response_create["response"]["instructions"] = DYNAMIC_INSTRUCTIONS
+    
+    return {"message": "Instructions updated successfully"}
 
 
 if __name__ == "__main__":
