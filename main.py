@@ -102,6 +102,19 @@ async def set_instructions(instructions: Instructions):
     
     return {"message": "Instructions updated successfully"}
 
+# Serve the HTML file
+@app.get("/")
+async def serve_frontend():
+    import os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    html_file = os.path.join(current_dir, "index.html")
+    
+    if os.path.exists(html_file):
+        with open(html_file, "r", encoding="utf-8") as file:
+            content = file.read()
+        return Response(content=content, media_type="text/html")
+    else:
+        return Response(content="Frontend file not found", status_code=404)
 
 if __name__ == "__main__":
     import uvicorn
